@@ -8,7 +8,7 @@ sql:
 ```js
 const descripciones = FileAttachment("./data/descripciones.json").json()
 ```
-
+ 
 
 
 
