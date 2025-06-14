@@ -1,0 +1,30 @@
+# .github/workflows/build-data.yml
+name: Build processed datasets
+
+on:
+  workflow_dispatch:
+  push:
+    paths: [ 'scripts/**' ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install -r requirements.txt
+      - run: python -m scripts.descargar_csv_raw
+      - run: python -m scripts.construir_panel_microdatos
+      - run: python -m scripts.generar_totales_trimestrales
+      - run: python -m scripts.generar_series_mensuales_simplificadas
+      - name: Commit processed data
+        run: |
+          git config user.name  "github-actions"
+          git config user.email "actions@github.com"
+          git add data/processed
+          if ! git diff --cached --quiet; then
+            git commit -m "data: refresh processed datasets"
+            git push
+          fi
