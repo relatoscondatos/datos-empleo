@@ -1,10 +1,15 @@
 # .github/workflows/build-data.yml
-name: Build processed datasets
+name: Deploy
 
 on:
-  workflow_dispatch:
-  push:
-    paths: [ 'scripts/**' ]
+  # Run this workflow whenever a new commit is pushed to main.
+  push: {branches: [main]}
+  # Run this workflow once per day, at 10:15 UTC
+  
+  # Run this workflow when triggered manually in GitHub’s UI.
+  workflow_dispatch: {}
+
+  # Only run this workflow when files in the scripts directory are changed.
 
 jobs:
   build:
