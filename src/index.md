@@ -233,45 +233,49 @@ const gobiernos = [
 //      y el último mes con dato dentro del rango oficial**
 function diferenciasPorGobierno(variable) {
   return gobiernos.map((g, i) => {
-    // 1) Parseamos inicio/fin a números
     const [anioInicioGob, mesInicioGob] = g.inicio.split("-").map(Number);
-    const [anioFinGob, mesFinGob]     = g.fin.split("-").map(Number);
+    const [anioFinGob, mesFinGob] = g.fin.split("-").map(Number);
 
-    // 2) Filtramos data para quedarnos solo con el rango “oficial” de ese gobierno.
     const datosPeriodo = [...data].filter(d => {
       const key = d["Año-Trimestre"] * 100 + d["Mes central"];
       const keyInicio = anioInicioGob * 100 + mesInicioGob;
-      const keyFin    = anioFinGob   * 100 + mesFinGob;
+      const keyFin = anioFinGob * 100 + mesFinGob;
       return key >= keyInicio && key <= keyFin;
     });
 
-    // 3) Encontramos el primer registro no nulo y el último registro no nulo
     const primerConDatos = datosPeriodo.find(d => d[variable] != null);
-    const ultimoConDatos = datosPeriodo.slice()
-      .reverse()
-      .find(d => d[variable] != null);
+    const ultimoConDatos = datosPeriodo.slice().reverse().find(d => d[variable] != null);
 
-    // Si no hay datos para todo el período, devolvemos un objeto con `error`.
-    if (!primerConDatos || !ultimoConDatos) {
+    // Verificamos que haya datos exactamente en el inicio y fin del período
+    const inicioEsperado = datosPeriodo[0];
+    const finEsperado = datosPeriodo[datosPeriodo.length - 1];
+
+    const tieneDatoInicioExacto = inicioEsperado && inicioEsperado[variable] != null;
+    const tieneDatoFinExacto = finEsperado && finEsperado[variable] != null;
+
+    // Permitir excepción especial para Boric (fin de período incompleto)
+    const esBoric = g.gobierno === "Boric";
+    const permitirFinIncompleto = esBoric;
+
+    // Si falta dato en el inicio o fin (según el caso), descartamos
+    if (!tieneDatoInicioExacto || (!tieneDatoFinExacto && !permitirFinIncompleto)) {
       return {
         order: i,
         gobierno: g.gobierno,
-        error: `No hay datos de "${variable}" en todo el periodo`
+        error: `Faltan datos al inicio o fin del período`
       };
     }
 
-    // 4) Índices dentro del arreglo `datosPeriodo`
-    const idxInicio = datosPeriodo.indexOf(primerConDatos);
-    const idxFin    = datosPeriodo.indexOf(ultimoConDatos);
+    const valorInicial = +inicioEsperado[variable];
+    const valorFinal = +finEsperado[variable];
 
-    const valorInicial = +primerConDatos[variable];
-    const valorFinal   = +ultimoConDatos[variable];
+    const idxInicio = datosPeriodo.indexOf(inicioEsperado);
+    const idxFin = datosPeriodo.indexOf(finEsperado);
 
-    // 5) Construcción del objeto final para este gobierno
     return {
       order: i,
       gobierno: g.gobierno,
-      añoInicioMedición: primerConDatos["Año-Trimestre"],
+      añoInicioMedición: inicioEsperado["Año-Trimestre"],
       valorInicial,
       valorFinal,
       datos: datosPeriodo.slice(idxInicio, idxFin + 1),
@@ -287,6 +291,7 @@ function diferenciasPorGobierno(variable) {
 
 // **11. Ejecutamos la función con la variable seleccionada**
 const dataGobiernos = diferenciasPorGobierno(selectMetric);
+const gobiernosExcluidos = dataGobiernos.filter(d => d.error);
 ```
 
 
@@ -297,6 +302,27 @@ const dataGobiernos = diferenciasPorGobierno(selectMetric);
 // Acá filtramos solo los que tengan `diferencia` definida (sin error).
 const dataGobFiltrada = dataGobiernos.filter(d => d.diferencia != null);
 ```
+
+
+## Cambios en las cifras durante el respectivo período presidencial
+
+```js
+if (gobiernosExcluidos.length) {
+   display(md`> ⚠️ **Algunos gobiernos no se muestran** porque no existen datos disponibles tanto al inicio como al final de su período presidencial para el indicador seleccionado.
+> 
+> **Períodos excluidos:**
+>
+> ${gobiernosExcluidos.map(d =>
+    `- ${d.gobierno}: ${d.error}`
+  ).join("  \n>")}
+`)
+} else {
+   display(md``)
+}
+```
+
+
+
 
 
 ```js
@@ -314,7 +340,7 @@ Plot.plot({
   },
   width: 700,
   height: 450,
-  title: `Cambio acumulado por gobierno de "${selectMetric}"`,
+  title: `${selectMetric}"`,
   marginLeft: 100,
   marginBottom: 80,
   marks: [
@@ -393,8 +419,8 @@ const excepcionesFormato = {
     unit: "porcentaje",
     axisLabel: "Tasa de desempleo (%)",
     // d3.format(".1%") → formatea 0.123 a “12.3%”
-    format: d => d3.format(".1%")(d/100),
-    formatChange: d => `${d3.format(".1f")(d)}pp`
+    format: d => d3.format(".2%")(d/100),
+    formatChange: d => `${d3.format(".2f")(d)}pp`
   },
   "Tasa de ocupación (%)": {
     unit: "porcentaje",
