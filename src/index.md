@@ -166,6 +166,7 @@ Plot.plot({
 
   title: `Valor año a año para "${selectMetric}"`,
   subtitle: `Trimestre Febrero-Marzo-Abril del año respectivo`,
+  caption: `Fuente de datos: Encuesta Nacional de Empleo, INE`,
   marks: [
     // Líneas verticales para marcar cambios de gobierno (opcional)
     Plot.ruleX(
